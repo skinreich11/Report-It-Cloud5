@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Report-It</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar__inner">
+        <div>
+          <p class="district-label">District Service Request</p>
+          <h1>Report-It</h1>
+        </div>
+        <div class="status-pill">Draft 311 Report</div>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="form-panel" aria-labelledby="request-heading">
+        <div class="section-heading">
+          <p>Street Issue</p>
+          <h2 id="request-heading">Service request details</h2>
+        </div>
+
+        <form id="report-form" class="request-form">
+          <label class="field">
+            <span>Issue photo</span>
+            <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" required />
+          </label>
+
+          <div class="image-preview" id="image-preview">
+            <span>No image selected</span>
+          </div>
+
+          <label class="field">
+            <span>Location</span>
+            <input
+              id="location"
+              name="location"
+              type="text"
+              autocomplete="street-address"
+              maxlength="200"
+              placeholder="Street address, intersection, or landmark"
+              required
+            />
+          </label>
+
+          <label class="field">
+            <span>Description</span>
+            <textarea
+              id="description"
+              name="description"
+              rows="5"
+              maxlength="500"
+              placeholder="Briefly describe what needs attention"
+              required
+            ></textarea>
+          </label>
+
+          <label class="field">
+            <span>Phone number</span>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              autocomplete="tel"
+              placeholder="202-555-0199"
+              required
+            />
+          </label>
+
+          <button id="submit-button" class="primary-action" type="submit">
+            Generate report
+          </button>
+        </form>
+      </section>
+
+      <section class="report-panel" aria-live="polite" aria-labelledby="report-heading">
+        <div class="section-heading">
+          <p>Report Draft</p>
+          <h2 id="report-heading">Generated request</h2>
+        </div>
+
+        <div id="message" class="message" hidden></div>
+
+        <article id="report-output" class="report-output report-output--empty">
+          <p class="empty-title">Waiting for report details</p>
+          <p class="empty-copy">The generated request will appear here.</p>
+        </article>
+      </section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
