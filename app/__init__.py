@@ -25,6 +25,12 @@ def create_app(test_config=None):
         UPLOAD_FOLDER=root_dir / "instance" / "uploads",
         OPENAI_API_KEY=os.getenv("OPENAI_API_KEY"),
         OPENAI_MODEL=os.getenv("OPENAI_MODEL", "gpt-5.6"),
+        OPEN311_BASE_URL=os.getenv(
+            "OPEN311_BASE_URL",
+            "https://san-francisco2-dev.spotmobile.net/open311/v2",
+        ),
+        OPEN311_PROVIDER_NAME=os.getenv("OPEN311_PROVIDER_NAME", "San Francisco 311"),
+        PUBLIC_BASE_URL=os.getenv("PUBLIC_BASE_URL"),
         MAX_UPLOAD_BYTES=5 * 1024 * 1024,
         RATE_LIMIT_MAX=12,
         RATE_LIMIT_WINDOW_SECONDS=60,

@@ -18,13 +18,18 @@ class FakeReportGenerator:
         self.calls.append((payload, image_data_url))
         return {
             "service_request_type": "Roadway Repair",
+            "service_code": "input:Pothole & Street Issues",
             "summary": "Pothole at an intersection.",
             "public_description": "A pothole is visible in the roadway.",
             "priority": "Normal",
-            "recommended_311_details": {
-                "location": payload.location,
-                "contact_phone": payload.phone,
+            "open311_request": {
+                "service_code": "input:Pothole & Street Issues",
+                "address_string": payload.location,
+                "phone": payload.phone,
+                "description": "A pothole is visible in the roadway.",
+                "media_url": None,
             },
+            "open311_attributes": {"input.pothole.Nature_of_request": "pavement_defect"},
         }
 
 
@@ -37,6 +42,7 @@ def client(tmp_path):
             "DATABASE_PATH": tmp_path / "report_it.sqlite3",
             "UPLOAD_FOLDER": tmp_path / "uploads",
             "REPORT_GENERATOR": generator,
+            "PUBLIC_BASE_URL": "https://example.com",
             "RATE_LIMIT_MAX": 100,
         }
     )
@@ -63,14 +69,26 @@ def test_create_report_accepts_multipart_input_and_persists_report(client):
     assert response.status_code == 201
     assert body["success"] is True
     assert body["data"]["report"]["service_request_type"] == "Roadway Repair"
+    assert "dc_311_submission_steps" not in body["data"]["report"]
+    assert body["data"]["report"]["open311_submission"]["status"] == "submitted"
+    assert "token" not in body["data"]["report"]["open311_submission"]
     assert body["data"]["submission"]["location"] == "14th St NW and U St NW"
     assert len(generator.calls) == 1
+    request_sample = body["data"]["report"]["open311_submission"]["request_sample"]
+    assert request_sample["service_code"] == "input:Pothole & Street Issues"
+    assert request_sample["address_string"] == "14th St NW and U St NW"
+    assert request_sample["phone"] == "202-555-0199"
+    assert request_sample["media_url"].startswith("https://example.com/uploads/street-")
+    assert request_sample["attributes"] == {
+        "input.pothole.Nature_of_request": "pavement_defect"
+    }
 
     fetch_response = http.get(f"/api/reports/{body['data']['submission']['id']}")
     fetch_body = fetch_response.get_json()
 
     assert fetch_response.status_code == 200
     assert fetch_body["data"]["report"]["summary"] == "Pothole at an intersection."
+    assert fetch_body["data"]["report"]["open311_submission"]["provider"] == "San Francisco 311"
 
 
 def test_create_report_rejects_invalid_upload(client):

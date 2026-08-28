@@ -7,89 +7,176 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <header class="topbar">
-      <div class="topbar__inner">
-        <div>
-          <p class="district-label">District Service Request</p>
-          <h1>Report-It</h1>
+    <a class="skip-link" href="#report-form">Skip to report form</a>
+
+    <header class="app-header">
+      <div class="app-header__inner">
+        <div class="brand-lockup" aria-label="Report-It">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M12 22s7-6.1 7-13A7 7 0 0 0 5 9c0 6.9 7 13 7 13Z" />
+              <circle cx="12" cy="9" r="2.6" />
+            </svg>
+          </span>
+          <div>
+            <p class="eyebrow">District Service Request</p>
+            <h1>Report-It</h1>
+          </div>
         </div>
-        <div class="status-pill">Draft 311 Report</div>
+
+        <div class="header-actions" aria-label="Request status">
+          <span class="status-chip status-chip--submitted">Open311 submission</span>
+          <span class="status-chip">San Francisco 311</span>
+        </div>
       </div>
     </header>
 
-    <main class="page-shell">
-      <section class="form-panel" aria-labelledby="request-heading">
-        <div class="section-heading">
-          <p>Street Issue</p>
-          <h2 id="request-heading">Service request details</h2>
+    <main class="workspace">
+      <section class="intro-band" aria-labelledby="intro-title">
+        <div class="intro-copy">
+          <p class="eyebrow">Street issue intake</p>
+          <h2 id="intro-title">Create a clean report from a photo and field notes.</h2>
+          <p>
+            Upload the issue, confirm the location, add a short description, and submit a structured 311 request.
+          </p>
         </div>
 
-        <form id="report-form" class="request-form">
-          <label class="field">
-            <span>Issue photo</span>
-            <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" required />
-          </label>
+        <div class="street-snapshot" aria-hidden="true">
+          <div class="street-snapshot__skyline"></div>
+          <div class="street-snapshot__map">
+            <span class="street-line street-line--one"></span>
+            <span class="street-line street-line--two"></span>
+            <span class="street-line street-line--three"></span>
+            <span class="street-pin"></span>
+          </div>
+        </div>
+      </section>
 
-          <div class="image-preview" id="image-preview">
-            <span>No image selected</span>
+      <div class="request-grid">
+        <section class="form-panel" aria-labelledby="request-heading">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Step 1</p>
+              <h2 id="request-heading">Issue details</h2>
+            </div>
+            <span class="panel-meta">Required fields</span>
           </div>
 
-          <label class="field">
-            <span>Location</span>
-            <input
-              id="location"
-              name="location"
-              type="text"
-              autocomplete="street-address"
-              maxlength="200"
-              placeholder="Street address, intersection, or landmark"
-              required
-            />
-          </label>
+          <div id="error-summary" class="error-summary" role="alert" tabindex="-1" hidden>
+            <h3>There is a problem</h3>
+            <ul id="error-list"></ul>
+          </div>
 
-          <label class="field">
-            <span>Description</span>
-            <textarea
-              id="description"
-              name="description"
-              rows="5"
-              maxlength="500"
-              placeholder="Briefly describe what needs attention"
-              required
-            ></textarea>
-          </label>
+          <form id="report-form" class="request-form" novalidate>
+            <fieldset class="form-section">
+              <legend>Photo</legend>
+              <label class="upload-box" for="image">
+                <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" required />
+                <span class="upload-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 17.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" />
+                    <path d="M12 3v13" />
+                    <path d="m7 8 5-5 5 5" />
+                  </svg>
+                </span>
+                <span class="upload-copy">
+                  <strong id="upload-title">Choose issue photo</strong>
+                  <span id="upload-help">PNG, JPG, or WEBP up to 5MB</span>
+                </span>
+              </label>
+              <p id="image-error" class="field-error" hidden></p>
 
-          <label class="field">
-            <span>Phone number</span>
-            <input
-              id="phone"
-              name="phone"
-              type="tel"
-              autocomplete="tel"
-              placeholder="202-555-0199"
-              required
-            />
-          </label>
+              <div class="image-preview" id="image-preview">
+                <span>No image selected</span>
+              </div>
+            </fieldset>
 
-          <button id="submit-button" class="primary-action" type="submit">
-            Generate report
-          </button>
-        </form>
-      </section>
+            <fieldset class="form-section">
+              <legend>Location and contact</legend>
+              <div class="field-grid">
+                <label class="field" for="location">
+                  <span>Location</span>
+                  <input
+                    id="location"
+                    name="location"
+                    type="text"
+                    autocomplete="street-address"
+                    maxlength="200"
+                    placeholder="San Francisco street address, intersection, or landmark"
+                    aria-describedby="location-error"
+                    required
+                  />
+                  <span id="location-error" class="field-error" hidden></span>
+                </label>
 
-      <section class="report-panel" aria-live="polite" aria-labelledby="report-heading">
-        <div class="section-heading">
-          <p>Report Draft</p>
-          <h2 id="report-heading">Generated request</h2>
-        </div>
+                <label class="field" for="phone">
+                  <span>Phone number</span>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    autocomplete="tel"
+                    placeholder="415-555-0199"
+                    aria-describedby="phone-error"
+                    required
+                  />
+                  <span id="phone-error" class="field-error" hidden></span>
+                </label>
+              </div>
+            </fieldset>
 
-        <div id="message" class="message" hidden></div>
+            <fieldset class="form-section">
+              <legend>Observation</legend>
+              <label class="field" for="description">
+                <span>Description</span>
+                <textarea
+                  id="description"
+                  name="description"
+                  rows="5"
+                  maxlength="500"
+                  placeholder="Briefly describe what needs attention"
+                  aria-describedby="description-error description-counter"
+                  required
+                ></textarea>
+                <span id="description-error" class="field-error" hidden></span>
+                <span id="description-counter" class="character-count">0 / 500</span>
+              </label>
+            </fieldset>
 
-        <article id="report-output" class="report-output report-output--empty">
-          <p class="empty-title">Waiting for report details</p>
-          <p class="empty-copy">The generated request will appear here.</p>
-        </article>
-      </section>
+            <button id="submit-button" class="primary-action" type="submit">
+              Generate and submit
+            </button>
+          </form>
+        </section>
+
+        <aside class="report-panel" aria-live="polite" aria-labelledby="report-heading">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Step 2</p>
+              <h2 id="report-heading">Submitted request</h2>
+            </div>
+            <span class="panel-meta">Open311 receipt</span>
+          </div>
+
+          <div id="message" class="message" hidden></div>
+
+          <article id="report-output" class="report-output report-output--empty">
+            <div class="empty-state">
+              <span class="empty-state__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M8 6h8" />
+                  <path d="M8 10h8" />
+                  <path d="M8 14h5" />
+                  <path d="M6 2h9l3 3v17H6z" />
+                  <path d="M15 2v4h4" />
+                </svg>
+              </span>
+              <p class="empty-title">Waiting for report details</p>
+              <p class="empty-copy">A submitted service request receipt will appear here.</p>
+            </div>
+          </article>
+        </aside>
+      </div>
     </main>
 
     <script src="/app.js" defer></script>

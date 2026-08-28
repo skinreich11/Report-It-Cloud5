@@ -18,12 +18,19 @@ class FakeResponses:
             output_text=json.dumps(
                 {
                     "service_request_type": "Streetlight Repair",
+                    "service_code": "PW:BSM:Damage Property",
                     "summary": "Broken street lamp near a bus stop.",
                     "public_description": "A street lamp appears broken and needs inspection.",
                     "priority": "Normal",
-                    "recommended_311_details": {
-                        "location": "1350 Pennsylvania Ave NW",
-                        "contact_phone": "202-555-0142",
+                    "open311_request": {
+                        "service_code": "PW:BSM:Damage Property",
+                        "address_string": "1350 Pennsylvania Ave NW",
+                        "phone": "202-555-0142",
+                        "description": "A street lamp appears broken and needs inspection.",
+                        "media_url": None,
+                    },
+                    "open311_attributes": {
+                        "oform.pw_damaged_property.Nature_of_request": "traffic_signal",
                     },
                 }
             )
@@ -68,12 +75,15 @@ def test_generate_report_calls_responses_api_with_text_image_and_phone():
     assert "1350 Pennsylvania Ave NW" in prompt_text
     assert "202-555-0142" in prompt_text
     assert report["service_request_type"] == "Streetlight Repair"
+    assert report["service_code"] == "PW:BSM:Damage Property"
+    assert "dc_311_submission_steps" not in report
+    assert report["open311_request"]["phone"] == "202-555-0142"
 
 
 def test_generate_report_parses_embedded_json_response():
     client = FakeOpenAIClient()
     client.responses.create = lambda **_: SimpleNamespace(
-        output_text='Report:\n{"service_request_type":"Other","summary":"Issue noted.","public_description":"Issue requires review.","priority":"Low","recommended_311_details":{}}'
+        output_text='Report:\n{"service_request_type":"Damaged public property","service_code":"PW:BSM:Damage Property","summary":"Issue noted.","public_description":"Issue requires review.","priority":"Low","open311_request":{"service_code":"PW:BSM:Damage Property","address_string":"15th St NW","phone":"202-555-0142","description":"Issue requires review.","media_url":null},"open311_attributes":{"oform.pw_damaged_property.Nature_of_request":"traffic_signal"}}'
     )
     payload = ReportPayload(
         description="Unknown street issue.",
@@ -88,7 +98,8 @@ def test_generate_report_parses_embedded_json_response():
         model="gpt-5.6",
     )
 
-    assert report["service_request_type"] == "Other"
+    assert report["service_request_type"] == "Damaged public property"
+    assert report["open311_request"]["address_string"] == "15th St NW"
 
 
 @pytest.mark.parametrize(
@@ -98,7 +109,8 @@ def test_generate_report_parses_embedded_json_response():
         "not json",
         '{"summary":"Missing required fields"}',
         '["not", "an", "object"]',
-        '{"service_request_type":"Other","summary":"Issue","public_description":"Desc","priority":"Low","recommended_311_details":[]}',
+        '{"service_request_type":"Other","service_code":"PW:BSM:Damage Property","summary":"Issue","public_description":"Desc","priority":"Low","open311_request":[],"open311_attributes":{}}',
+        '{"service_request_type":"Other","service_code":"PW:BSM:Damage Property","summary":"Issue","public_description":"Desc","priority":"Low","open311_request":{},"open311_attributes":[]}',
     ],
 )
 def test_generate_report_rejects_invalid_model_output(output_text):

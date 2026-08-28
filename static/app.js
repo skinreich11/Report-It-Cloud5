@@ -4,11 +4,37 @@ const imagePreview = document.querySelector("#image-preview");
 const message = document.querySelector("#message");
 const output = document.querySelector("#report-output");
 const submitButton = document.querySelector("#submit-button");
+const uploadTitle = document.querySelector("#upload-title");
+const uploadHelp = document.querySelector("#upload-help");
+const description = document.querySelector("#description");
+const descriptionCounter = document.querySelector("#description-counter");
+const errorSummary = document.querySelector("#error-summary");
+const errorList = document.querySelector("#error-list");
+const fields = {
+  image: {
+    input: document.querySelector("#image"),
+    error: document.querySelector("#image-error"),
+  },
+  location: {
+    input: document.querySelector("#location"),
+    error: document.querySelector("#location-error"),
+  },
+  phone: {
+    input: document.querySelector("#phone"),
+    error: document.querySelector("#phone-error"),
+  },
+  description: {
+    input: document.querySelector("#description"),
+    error: document.querySelector("#description-error"),
+  },
+};
 
 imageInput.addEventListener("change", () => {
   const file = imageInput.files[0];
   if (!file) {
     imagePreview.innerHTML = "<span>No image selected</span>";
+    uploadTitle.textContent = "Choose issue photo";
+    uploadHelp.textContent = "PNG, JPG, or WEBP up to 5MB";
     return;
   }
 
@@ -19,26 +45,41 @@ imageInput.addEventListener("change", () => {
   image.alt = "Selected street issue";
   image.onload = () => URL.revokeObjectURL(previewUrl);
   imagePreview.append(image);
+  uploadTitle.textContent = file.name;
+  uploadHelp.textContent = `${formatFileSize(file.size)} selected`;
+  clearFieldError("image");
+});
+
+description.addEventListener("input", () => {
+  descriptionCounter.textContent = `${description.value.length} / 500`;
 });
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   setMessage("", "neutral");
+
+  if (!validateForm()) {
+    errorSummary.focus();
+    return;
+  }
+
   setLoading(true);
 
   try {
+    const minimumSubmitTime = delay(5000);
     const response = await fetch("/api/reports", {
       method: "POST",
       body: new FormData(form),
     });
     const body = await response.json();
+    await minimumSubmitTime;
 
     if (!response.ok || !body.success) {
       throw new Error(body.error || "The report could not be generated.");
     }
 
+    setMessage("Request submitted to 311.", "success");
     renderReport(body.data);
-    setMessage("Report draft generated.", "success");
   } catch (error) {
     setMessage(error.message, "error");
   } finally {
@@ -48,7 +89,83 @@ form.addEventListener("submit", async (event) => {
 
 function setLoading(isLoading) {
   submitButton.disabled = isLoading;
-  submitButton.textContent = isLoading ? "Generating..." : "Generate report";
+  submitButton.textContent = isLoading ? "Submitting..." : "Generate and submit";
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
+function validateForm() {
+  const errors = [];
+  const file = fields.image.input.files[0];
+  const location = fields.location.input.value.trim();
+  const phone = fields.phone.input.value.trim();
+  const descriptionValue = fields.description.input.value.trim();
+
+  clearErrors();
+
+  if (!file) {
+    errors.push(["image", "Choose an issue photo."]);
+  } else if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+    errors.push(["image", "Use a PNG, JPG, or WEBP image."]);
+  } else if (file.size > 5 * 1024 * 1024) {
+    errors.push(["image", "Use an image that is 5MB or smaller."]);
+  }
+
+  if (!location) {
+    errors.push(["location", "Enter the location of the issue."]);
+  }
+
+  if (!phone || !/^[0-9+().\-\s]{7,24}$/.test(phone) || digitCount(phone) < 10) {
+    errors.push(["phone", "Enter a valid phone number."]);
+  }
+
+  if (!descriptionValue) {
+    errors.push(["description", "Enter a short description of the issue."]);
+  } else if (descriptionValue.length > 500) {
+    errors.push(["description", "Keep the description to 500 characters or fewer."]);
+  }
+
+  if (errors.length > 0) {
+    showErrors(errors);
+    return false;
+  }
+
+  return true;
+}
+
+function showErrors(errors) {
+  errorList.innerHTML = "";
+  errors.forEach(([fieldName, errorText]) => {
+    const field = fields[fieldName];
+    field.error.textContent = errorText;
+    field.error.hidden = false;
+    field.input.setAttribute("aria-invalid", "true");
+
+    const item = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = `#${field.input.id}`;
+    link.textContent = errorText;
+    item.append(link);
+    errorList.append(item);
+  });
+  errorSummary.hidden = false;
+}
+
+function clearErrors() {
+  errorSummary.hidden = true;
+  errorList.innerHTML = "";
+  Object.keys(fields).forEach(clearFieldError);
+}
+
+function clearFieldError(fieldName) {
+  const field = fields[fieldName];
+  field.error.hidden = true;
+  field.error.textContent = "";
+  field.input.removeAttribute("aria-invalid");
 }
 
 function setMessage(text, type) {
@@ -61,14 +178,38 @@ function renderReport({ submission, report }) {
   output.className = "report-output";
   output.innerHTML = "";
 
-  output.append(
-    fieldBlock("Request ID", submission.id),
-    fieldBlock("Service request type", report.service_request_type),
-    fieldBlock("Priority", report.priority),
+  const record = document.createElement("div");
+  record.className = "request-record";
+
+  const header = document.createElement("header");
+  header.className = "request-record__header";
+
+  const titleBlock = document.createElement("div");
+  const title = document.createElement("h3");
+  title.className = "request-record__title";
+  title.textContent = report.service_request_type || "Street Service Request";
+
+  const requestId = document.createElement("p");
+  requestId.className = "request-record__id";
+  requestId.textContent = `Local record ${submission.id}`;
+
+  const priority = document.createElement("span");
+  priority.className = "priority-badge";
+  priority.textContent = `${report.priority || "Normal"} priority`;
+
+  const body = document.createElement("div");
+  body.className = "request-record__body";
+
+  titleBlock.append(title, requestId);
+  header.append(titleBlock, priority);
+  body.append(
+    submissionReceipt(report.open311_submission),
     fieldBlock("Summary", report.summary),
     fieldBlock("Public description", report.public_description),
-    detailList(report.recommended_311_details),
+    open311RequestDetails(report),
   );
+  record.append(header, body);
+  output.append(record);
 }
 
 function fieldBlock(label, value) {
@@ -85,15 +226,26 @@ function fieldBlock(label, value) {
   return wrapper;
 }
 
-function detailList(details) {
+function submissionReceipt(submission) {
   const wrapper = document.createElement("section");
-  wrapper.className = "report-field";
+  wrapper.className = "report-field submission-receipt";
 
   const title = document.createElement("h3");
-  title.textContent = "311 details";
+  title.textContent = "Submission status";
 
   const list = document.createElement("dl");
-  Object.entries(details || {}).forEach(([key, value]) => {
+  const receipt = {
+    status: submission?.status,
+    provider: submission?.provider,
+    service_notice: submission?.service_notice,
+    endpoint: submission?.endpoint,
+  };
+
+  Object.entries(receipt).forEach(([key, value]) => {
+    if (!value) {
+      return;
+    }
+
     const term = document.createElement("dt");
     term.textContent = labelize(key);
 
@@ -107,8 +259,65 @@ function detailList(details) {
   return wrapper;
 }
 
+function open311RequestDetails(report) {
+  const wrapper = document.createElement("section");
+  wrapper.className = "report-field";
+
+  const title = document.createElement("h3");
+  title.textContent = "Open311 request sample";
+
+  const list = document.createElement("dl");
+  const submittedRequest = report.open311_submission?.request_sample || {};
+  const requestDetails = {
+    service_code: submittedRequest.service_code || report.service_code,
+    address_string: submittedRequest.address_string || report.open311_request?.address_string,
+    phone: submittedRequest.phone || report.open311_request?.phone,
+    description: submittedRequest.description || report.open311_request?.description,
+    media_url: submittedRequest.media_url || report.open311_request?.media_url,
+    attributes: formatAttributes(submittedRequest.attributes || report.open311_attributes),
+  };
+
+  Object.entries(requestDetails).forEach(([key, value]) => {
+    if (!value) {
+      return;
+    }
+
+    const term = document.createElement("dt");
+    term.textContent = labelize(key);
+
+    const description = document.createElement("dd");
+    description.textContent = value;
+
+    list.append(term, description);
+  });
+
+  wrapper.append(title, list);
+  return wrapper;
+}
+
+function formatAttributes(attributes) {
+  const entries = Object.entries(attributes || {});
+  if (entries.length === 0) {
+    return "";
+  }
+
+  return entries.map(([key, value]) => `${key}: ${value}`).join(", ");
+}
+
 function labelize(value) {
   return value
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function digitCount(value) {
+  return [...value].filter((character) => /\d/.test(character)).length;
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
