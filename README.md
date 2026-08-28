@@ -39,6 +39,42 @@ python run.py
 
 Open `http://127.0.0.1:5000`.
 
+## GitHub Pages Deployment
+
+The GitHub Pages deployment publishes the `static/` directory and runs fully in the browser. GitHub Pages cannot run Flask, SQLite, Python, `.env` files, or server-side OpenAI calls, so the Pages version prepares a local Open311 request sample and shows a successful submission after 5 seconds.
+
+1. Commit and push the Pages workflow:
+
+```bash
+git add .
+git commit -m "chore: deploy static app to github pages"
+git push
+```
+
+2. In GitHub, open the repo:
+
+```text
+https://github.com/skinreich11/Report-It-Cloud5
+```
+
+3. Go to Settings -> Pages.
+
+4. Under Build and deployment, set Source to:
+
+```text
+GitHub Actions
+```
+
+5. Go to Actions -> Deploy GitHub Pages and run the workflow, or push to `main`.
+
+6. After it finishes, the site should be available at:
+
+```text
+https://skinreich11.github.io/Report-It-Cloud5/
+```
+
+For the full Flask/OpenAI/SQLite version, run the app locally or deploy it to a backend-capable host such as Vercel, Render, Fly.io, Railway, or another Python hosting service.
+
 ## Vercel Deployment
 
 This repo is deployable on Vercel as a Python/Flask app. The deployment entrypoint is `main.py`, and `vercel.json` routes traffic to that Flask app.

@@ -10,6 +10,56 @@ const description = document.querySelector("#description");
 const descriptionCounter = document.querySelector("#description-counter");
 const errorSummary = document.querySelector("#error-summary");
 const errorList = document.querySelector("#error-list");
+const STATIC_MODE = window.location.hostname.endsWith("github.io");
+const OPEN311_BASE_URL = "https://san-francisco2-dev.spotmobile.net/open311/v2";
+const OPEN311_PROVIDER_NAME = "San Francisco 311";
+const SERVICE_OPTIONS = [
+  {
+    serviceCode: "input:Pothole & Street Issues",
+    serviceName: "Pothole and street issues",
+    keywords: ["pothole", "road damage", "pavement", "asphalt", "travel lane", "sinkhole"],
+    attributes: { "input.pothole.Nature_of_request": "pavement_defect" },
+  },
+  {
+    serviceCode: "PW:BSM:Damage Property",
+    serviceName: "Damaged public property",
+    keywords: [
+      "lamp",
+      "light",
+      "streetlight",
+      "traffic signal",
+      "signal",
+      "bench",
+      "bike rack",
+      "shelter",
+      "public property",
+      "broken fixture",
+    ],
+    attributes: { "oform.pw_damaged_property.Nature_of_request": "traffic_signal" },
+  },
+  {
+    serviceCode: "PW:BUF:Tree Maintenance",
+    serviceName: "Tree maintenance",
+    keywords: ["tree", "branch", "limb", "roots", "fallen tree"],
+    attributes: { "oform.pw_tree_maintenance.Request_type": "other" },
+  },
+  {
+    serviceCode: "input:Parking & Traffic Sign Repair",
+    serviceName: "Parking and traffic sign repair",
+    keywords: ["sign", "stop sign", "street sign", "parking sign"],
+    attributes: {
+      "oform.mta_signs.Nature_of_request": "other",
+      "oform.mta_signs.Request_type": "other",
+      "oform.mta_signs.Subtype": "other",
+    },
+  },
+  {
+    serviceCode: "input:Illegal Postings",
+    serviceName: "Illegal postings",
+    keywords: ["posting", "flyer", "poster", "sticker"],
+    attributes: {},
+  },
+];
 const fields = {
   image: {
     input: document.querySelector("#image"),
@@ -67,14 +117,10 @@ form.addEventListener("submit", async (event) => {
 
   try {
     const minimumSubmitTime = delay(5000);
-    const response = await fetch("/api/reports", {
-      method: "POST",
-      body: new FormData(form),
-    });
-    const body = await response.json();
+    const body = STATIC_MODE ? buildStaticReport() : await createBackendReport();
     await minimumSubmitTime;
 
-    if (!response.ok || !body.success) {
+    if (!body.success) {
       throw new Error(body.error || "The report could not be generated.");
     }
 
@@ -86,6 +132,74 @@ form.addEventListener("submit", async (event) => {
     setLoading(false);
   }
 });
+
+async function createBackendReport() {
+  const response = await fetch("/api/reports", {
+    method: "POST",
+    body: new FormData(form),
+  });
+  const body = await response.json();
+  if (!response.ok) {
+    return { success: false, error: body.error || "The report could not be generated." };
+  }
+  return body;
+}
+
+function buildStaticReport() {
+  const formData = new FormData(form);
+  const file = fields.image.input.files[0];
+  const payload = {
+    description: String(formData.get("description") || "").trim(),
+    location: String(formData.get("location") || "").trim(),
+    phone: String(formData.get("phone") || "").trim(),
+  };
+  const service = chooseService(`${payload.description} ${file?.name || ""}`);
+  const publicDescription = buildPublicDescription(payload, service);
+  const requestSample = {
+    service_code: service.serviceCode,
+    address_string: payload.location,
+    phone: payload.phone,
+    description: publicDescription,
+    media_url: file ? `Selected browser file: ${file.name}` : null,
+    attributes: service.attributes,
+  };
+
+  return {
+    success: true,
+    data: {
+      submission: {
+        id: `gh-pages-${Date.now().toString(36)}`,
+        description: payload.description,
+        location: payload.location,
+        phone: payload.phone,
+        image_path: file?.name || "Not provided",
+        created_at: new Date().toISOString(),
+      },
+      report: {
+        service_request_type: service.serviceName,
+        service_code: service.serviceCode,
+        summary: buildSummary(payload, service),
+        public_description: publicDescription,
+        priority: inferPriority(payload.description),
+        open311_request: {
+          service_code: service.serviceCode,
+          address_string: payload.location,
+          phone: payload.phone,
+          description: publicDescription,
+          media_url: null,
+        },
+        open311_attributes: service.attributes,
+        open311_submission: {
+          status: "submitted",
+          provider: OPEN311_PROVIDER_NAME,
+          endpoint: `${OPEN311_BASE_URL}/requests.json`,
+          service_notice: "Submission marked successful after local Open311 payload preparation.",
+          request_sample: requestSample,
+        },
+      },
+    },
+  };
+}
 
 function setLoading(isLoading) {
   submitButton.disabled = isLoading;
@@ -302,6 +416,36 @@ function formatAttributes(attributes) {
   }
 
   return entries.map(([key, value]) => `${key}: ${value}`).join(", ");
+}
+
+function chooseService(issueText) {
+  const normalized = String(issueText || "").toLowerCase();
+  return (
+    SERVICE_OPTIONS.find((service) =>
+      service.keywords.some((keyword) => normalized.includes(keyword)),
+    ) || SERVICE_OPTIONS[0]
+  );
+}
+
+function buildSummary(payload, service) {
+  return `${service.serviceName} reported at ${payload.location}.`;
+}
+
+function buildPublicDescription(payload, service) {
+  return [
+    payload.description,
+    `Reported location: ${payload.location}.`,
+    `Suggested Open311 category: ${service.serviceName}.`,
+  ].join(" ");
+}
+
+function inferPriority(descriptionText) {
+  const normalized = String(descriptionText || "").toLowerCase();
+  const urgentWords = ["danger", "hazard", "blocked", "injury", "emergency", "fallen"];
+  if (urgentWords.some((word) => normalized.includes(word))) {
+    return "High";
+  }
+  return "Normal";
 }
 
 function labelize(value) {
