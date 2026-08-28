@@ -39,6 +39,48 @@ python run.py
 
 Open `http://127.0.0.1:5000`.
 
+## Vercel Deployment
+
+This repo is deployable on Vercel as a Python/Flask app. The deployment entrypoint is `main.py`, and `vercel.json` routes traffic to that Flask app.
+
+1. Commit these deployment files:
+
+```bash
+git add pyproject.toml main.py vercel.json .vercelignore README.md
+git add app static tests requirements.txt run.py .env.example
+git commit -m "chore: configure vercel deployment"
+git push
+```
+
+2. In Vercel, import the GitHub repo.
+
+3. In the Vercel project settings, add this Environment Variable:
+
+```text
+OPENAI_API_KEY=your-real-openai-api-key
+```
+
+Optional environment variables:
+
+```text
+OPENAI_MODEL=gpt-5.6
+OPEN311_BASE_URL=https://san-francisco2-dev.spotmobile.net/open311/v2
+OPEN311_PROVIDER_NAME=San Francisco 311
+PUBLIC_BASE_URL=https://your-vercel-domain.vercel.app
+```
+
+4. Deploy with Vercel's default Python settings. Do not set a custom build command unless Vercel asks for one.
+
+The previous Vercel error:
+
+```text
+No `project` table found in: /vercel/path0/pyproject.toml
+```
+
+is fixed by the `[project]` section in `pyproject.toml`.
+
+Important deployment note: Vercel serverless functions do not provide a persistent SQLite database or permanent upload storage. This app uses `/tmp` on Vercel so it can run, but reports and uploaded images may disappear between cold starts or deployments. For production persistence, replace SQLite/uploads with hosted storage such as Vercel Postgres plus Vercel Blob, Supabase, Neon, or another managed database/storage provider.
+
 ## Tests
 
 ```bash

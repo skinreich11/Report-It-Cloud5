@@ -20,9 +20,15 @@ def create_app(test_config=None):
         static_folder=str(root_dir / "static"),
         static_url_path="",
     )
+    default_database_path = root_dir / "instance" / "report_it.sqlite3"
+    default_upload_folder = root_dir / "instance" / "uploads"
+    if os.getenv("VERCEL"):
+        default_database_path = Path("/tmp/report_it.sqlite3")
+        default_upload_folder = Path("/tmp/report-it-uploads")
+
     app.config.from_mapping(
-        DATABASE_PATH=root_dir / "instance" / "report_it.sqlite3",
-        UPLOAD_FOLDER=root_dir / "instance" / "uploads",
+        DATABASE_PATH=Path(os.getenv("DATABASE_PATH", default_database_path)),
+        UPLOAD_FOLDER=Path(os.getenv("UPLOAD_FOLDER", default_upload_folder)),
         OPENAI_API_KEY=os.getenv("OPENAI_API_KEY"),
         OPENAI_MODEL=os.getenv("OPENAI_MODEL", "gpt-5.6"),
         OPEN311_BASE_URL=os.getenv(
